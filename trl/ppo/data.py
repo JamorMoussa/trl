@@ -5,7 +5,7 @@ from tensordict import TensorDict
 import numpy as np 
 
 from .utils import discount_rewards, calculate_gaes
-
+from ..env import TrlEnv
 
 __all__ = ["PPODataLoader", ]
 
@@ -13,16 +13,19 @@ __all__ = ["PPODataLoader", ]
 class PPODataLoader:
 
     def __init__(
-        self, model, env, max_steps=1000
+        self, model, env: TrlEnv, max_steps=1000
     ):
-       
-       self.model = model 
-       self.env = env 
-       self.max_steps = max_steps
+        if not isinstance(env, TrlEnv):
+            raise ValueError("'env' must 'TrlEnv' type.")
+
+        self.model = model 
+        self.env = env 
+        self.max_steps = max_steps
 
     def __iter__(self):
        return self 
     
+    @torch.no_grad()
     def __next__(self) -> tuple[TensorDict, float]:
        return self.rollout()
 
@@ -30,28 +33,27 @@ class PPODataLoader:
         
         train_data = []
         
-        obs, _ = self.env.reset()
+        obs = self.env.reset()
 
         ep_reward = 0
 
         for _ in range(self.max_steps):
-            logits, val = self.model(torch.tensor(np.asarray([obs]), dtype=torch.float32))
-            act_distribution = Categorical(logits=logits)
-            act = act_distribution.sample()
-            old_log_probs = act_distribution.log_prob(act).item()
 
-            act, val = act.item(), val.item()
+            # logits, val = self.model(torch.tensor(np.asarray([obs]), dtype=torch.float32))
+            # act_distribution = Categorical(logits=logits)
+            # act = act_distribution.sample()
+            # old_log_probs = act_distribution.log_prob(act).item()
 
-            next_obs, reward, done, _, _ = self.env.step(act)
+            old_log_probs, act , val = self.model.evaluate(obs=obs)
+
+            # act, val = act.item(), val.item()
+
+            next_obs, reward, act, done = self.env.step(act)
 
             train_data.append(
                 TensorDict({
-                    "obs": torch.from_numpy(obs),
-                    "act": torch.tensor([act]).long(),
-                    "reward": torch.tensor([reward]).float(),
-                    "val": torch.tensor([val]).float(),
-                    "done": torch.tensor([done]).bool(),
-                    "old_log_probs": torch.tensor([old_log_probs]).float()
+                    "obs": obs, "act": act, "reward": reward, "val": val,
+                    "done": done, "old_log_probs": old_log_probs
                 }).unsqueeze(0)
             )
 

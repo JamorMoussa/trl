@@ -53,11 +53,11 @@ class PPOTrainer:
       self.value_loss= value_loss
 
       self.actor_optim = optim.Adam(
-        params= [*self.model.shared_module.parameters(), *self.model.actor_module.parameters()], lr=actor_lr
+        params= [*self.model.base.parameters(), *self.model.actor.parameters()], lr=actor_lr
       )
 
       self.critic_optim = optim.Adam(
-        params= [*self.model.shared_module.parameters(), *self.model.critic_module.parameters()], lr=critic_lr
+        params= [*self.model.base.parameters(), *self.model.critic.parameters()], lr=critic_lr
       )
 
   def train_actor(
@@ -68,9 +68,13 @@ class PPOTrainer:
       for _ in range(self.max_policy_train_iters):
           self.actor_optim.zero_grad()
 
-          new_logits = self.model.actor(data["obs"])
-          new_logits = Categorical(logits=new_logits)
-          new_log_probs = new_logits.log_prob(data["act"])
+          # new_logits = self.model.actor(data["obs"])
+          # new_logits = Categorical(logits=new_logits)
+          # new_log_probs = new_logits.log_prob(data["act"])
+
+          new_log_probs, _ = self.model.eval_actor(obs= data["obs"], act= data["act"])
+
+          
 
           loss = self.ppo_loss(
               new_probs= new_log_probs, old_probs= data["old_log_probs"], gaes= data["gaes"]
@@ -93,7 +97,7 @@ class PPOTrainer:
       for _ in range(self.value_train_iters):
         self.critic_optim.zero_grad()
 
-        values = self.model.critic(data["obs"])
+        values = self.model.eval_critic(data["obs"])
 
         value_loss = self.value_loss(
             returns, values.squeeze()
