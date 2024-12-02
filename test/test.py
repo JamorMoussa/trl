@@ -4,7 +4,7 @@ from torch.distributions.categorical import Categorical
 import gymnasium as gym
 from gymnasium.wrappers import RecordVideo
 
-from ppo import ActorCriticNetwork
+from model import ActorCriticNetwork
 
 
 env = gym.make('Acrobot-v1', render_mode="rgb_array")
@@ -13,10 +13,10 @@ model = ActorCriticNetwork(env.observation_space.shape[0], env.action_space.n)
 # train_data, reward = rollout(model, env) # Test rollout function
 
 
-model.load_state_dict(torch.load("./save/model.pt", weights_only=True))
+model.load_state_dict(torch.load("../save/model.pt", weights_only=True))
 
 
-env = RecordVideo(env, video_folder="cartpole-agent", name_prefix="eval",
+env = RecordVideo(env, video_folder="results-test", name_prefix="eval",
                   episode_trigger=lambda x: True)
 # env = RecordEpisodeStatistics(env, buffer_length=num_eval_episodes)
 
